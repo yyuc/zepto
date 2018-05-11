@@ -58,7 +58,11 @@
                   var returned = fn && fn.apply(this, arguments)
                   if (returned && $.isFunction(returned.promise)) {
 
-                    // 
+                    /*
+                     * since the resolve, reject, notify coresponding methos are defined in deferred object created by the then function
+                     * need to push the resolve, reject, notify functions to the callback list in the new deferred object if then function returns a new deferred object
+                     * then we can postpone the status related function fired when the new deferred object finished.
+                     */
                     returned.promise().done(defer.resolve).fail(defer.reject).progress(defer.notify)
                   } else {
                     /*
@@ -121,6 +125,10 @@
        * deferred[notify] -> deferred[notifyWith] -> list.fireWith
        */
       deferred[tuple[0]] = function(){
+        /*
+         * make the promise object as the resolveWith, rejectWith, notifyWith context.
+         * if current context is deferred, then return the inner promise object, otherwise it will be the promise object, return it direstly.
+         */
         deferred[tuple[0] + "With"](this === deferred ? promise : this, arguments)
         return this
       }
