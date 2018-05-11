@@ -4,6 +4,10 @@
 //
 //     Some code (c) 2005, 2013 jQuery Foundation, Inc. and other contributors
 
+
+// Deferred.done returns current deferred object
+// Deferred.then returns a new deferred object
+
 ;(function($){
   var slice = Array.prototype.slice
 
@@ -17,9 +21,15 @@
         state = "pending",
         promise = {
           state: function() {
+            /*
+             * pending, resolved, rejected 
+             */
             return state
           },
           always: function() {
+            /* 
+             *  Push the always callback function to resolve callback list & reject callback list
+             */
             deferred.done(arguments).fail(arguments)
             return this
           },
@@ -53,15 +63,25 @@
         deferred = {}
 
     $.each(tuples, function(i, tuple){
+      /*
+       * tuple[2] means the callback list of the each actions.
+       */
       var list = tuple[2],
           stateString = tuple[3]
 
+      /*
+       * tuplep[1] means the function(done, fail, progress), when thease method invoked,
+       * the callback function will be added into the list directly.
+       */
       promise[tuple[1]] = list.add
 
       if (stateString) {
-        list.add(function(){
-          state = stateString
-        }, tuples[i^1][2].disable, tuples[2][2].lock)
+        /*
+         * i^1 means when deferred object is resolved, disable the reject callback list, 
+         * when deferred object is rejected, disable the resolve callbacklist.
+         * disable means clean the callback list, stack and the memory.
+         */
+        list.add(function(){ state = stateString }, tuples[i^1][2].disable, tuples[2][2].lock)
       }
 
       deferred[tuple[0]] = function(){
@@ -71,6 +91,9 @@
       deferred[tuple[0] + "With"] = list.fireWith
     })
 
+    /*
+     * mixin the deferred object with promise object.
+     */
     promise.promise(deferred)
     if (func) func.call(deferred, deferred)
     return deferred
