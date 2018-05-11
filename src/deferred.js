@@ -20,12 +20,14 @@
         ],
         state = "pending",
         promise = {
+          
+          /*
+           * pending, resolved, rejected 
+           */
           state: function() {
-            /*
-             * pending, resolved, rejected 
-             */
             return state
           },
+
           always: function() {
             /* 
              *  Push the always callback function to resolve callback list & reject callback list
@@ -33,19 +35,35 @@
             deferred.done(arguments).fail(arguments)
             return this
           },
+
+          /*
+           * Only accepted 3 function at most, since the function will loop the actions tuple and find the corresponding actions
+           */
           then: function(/* fnDone [, fnFailed [, fnProgress]] */) {
             var fns = arguments
+
+            /*
+             * return a new deferred object wrapped the callback function, in the callback function, it will map the resolve, reject, notify
+             * callback to the previouse deferred object.
+             */
             return Deferred(function(defer){
               $.each(tuples, function(i, tuple){
+
                 var fn = $.isFunction(fns[i]) && fns[i]
-                deferred[tuple[1]](function(){
+
+                /*
+                 * Push the callback function to the callback list
+                 */
+                deferred[tuple[1]](function() {
                   var returned = fn && fn.apply(this, arguments)
                   if (returned && $.isFunction(returned.promise)) {
-                    returned.promise()
-                      .done(defer.resolve)
-                      .fail(defer.reject)
-                      .progress(defer.notify)
+
+                    // 
+                    returned.promise().done(defer.resolve).fail(defer.reject).progress(defer.notify)
                   } else {
+                    /*
+                     * if the returned object is not a deferred object, just fire the resolve, reject or update function with the parameter directly
+                     */
                     var context = this === promise ? defer.promise() : this,
                         values = fn ? [returned] : arguments
                     defer[tuple[0] + "With"](context, values)
@@ -53,9 +71,12 @@
                 })
               })
               fns = null
-            }).promise()
+            }).promise() /* return a promise object */
           },
 
+          /*
+           * return a promise object directly or extends the current object with promise object
+           */
           promise: function(obj) {
             return obj != null ? $.extend( obj, promise ) : promise
           }
@@ -72,6 +93,9 @@
       /*
        * tuplep[1] means the function(done, fail, progress), when thease method invoked,
        * the callback function will be added into the list directly.
+       * promise[done] -> list.add
+       * promise[fail] -> list.add
+       * promise[progress] -> list.add
        */
       promise[tuple[1]] = list.add
 
@@ -105,11 +129,17 @@
 
     /*
      * mixin the deferred object with promise object.
+     * 
+     * deferred[done] -> promise[done] -> list.add
+     * deferred[fail] -> promise[fail] -> list.add
+     * deferred[always] -> promise[always]
+     * deferred[state] -> promise[state]
+     * deferred[then] -> promise[then]
      */
     promise.promise(deferred)
     
     /*
-     * 
+     * todo: need test to understand
      */
     if (func) func.call(deferred, deferred)
 
