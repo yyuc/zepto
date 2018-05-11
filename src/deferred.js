@@ -77,13 +77,25 @@
 
       if (stateString) {
         /*
+         * when the deferred object is resolved, reject or notified, change the deferred object state accordingly
+         * 
          * i^1 means when deferred object is resolved, disable the reject callback list, 
          * when deferred object is rejected, disable the resolve callbacklist.
          * disable means clean the callback list, stack and the memory.
+         * 
+         * tuples[2][2].lock means when deferred object is resolved, rejected or notified,
+         * lock the progress callback list
          */
         list.add(function(){ state = stateString }, tuples[i^1][2].disable, tuples[2][2].lock)
       }
 
+      /*
+       * delegate the fireWith function of list to the deferred object.
+       * 
+       * deferred[resolve] -> deferred[resolveWith] -> list.fireWith
+       * deferred[reject] -> deferred[rejectWith] -> list.fireWith
+       * deferred[notify] -> deferred[notifyWith] -> list.fireWith
+       */
       deferred[tuple[0]] = function(){
         deferred[tuple[0] + "With"](this === deferred ? promise : this, arguments)
         return this
@@ -95,7 +107,12 @@
      * mixin the deferred object with promise object.
      */
     promise.promise(deferred)
+    
+    /*
+     * 
+     */
     if (func) func.call(deferred, deferred)
+
     return deferred
   }
 
